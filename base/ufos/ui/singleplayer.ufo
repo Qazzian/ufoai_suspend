@@ -135,6 +135,14 @@ window singleplayermission
 		onClick		{ cmd "ui_push options;" }
 	}
 
+	cmpMenuButton button_suspend_battlescape
+	{
+		string		"_Suspend"
+		tooltip		"_Suspend the game and continue at a later date."
+		pos			"640 450"
+		onClick		{ cmd "ui_push popup_suspend_battlescape_confirmation;" }
+	}
+
 	cmpMenuButton button_exit_battlescape
 	{
 		string		"_Exit"
@@ -179,6 +187,40 @@ window popup_exit_campaign_confirmation
 	cmpCancelButton bt_dontquit
 	{
 		tooltip		"_Do not quit."
+		pos			"285 188"
+		onClick		{ cmd "ui_pop;" }
+	}
+}
+
+// ========================
+// POPUP SUSPEND CONFIRMATION
+// ========================
+window popup_suspend_battlescape_confirmation
+{
+	{
+		string		"_Suspend Battle Confirmation"
+		background		"ui/popup_alpha_tile"
+		pos			"264 262"
+		size		"486 247"
+		dragbutton	true
+		closebutton	true
+	}
+	string suspend_confirmation_label
+	{
+		string		"_Progress will be saved and the game will exit."
+		pos			"26 58"
+		size		"450 60"
+	}
+	cmpPopupButton bt_quit
+	{
+		tooltip		"_Suspend current game and quit."
+		string		"_Suspend"
+		pos			"28 188"
+		onClick		{ cmd "game_exit;" }
+	}
+	cmpCancelButton bt_dontquit
+	{
+		tooltip		"_Do not suspend."
 		pos			"285 188"
 		onClick		{ cmd "ui_pop;" }
 	}
