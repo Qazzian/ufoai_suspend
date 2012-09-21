@@ -34,6 +34,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../renderer/r_draw.h"
 #include "../../common/tracing.h"
 #include "../../common/grid.h"
+#include "../../common/xml.h"
+#include "../cgame/campaign/save/save_bs_localentitiy.h"
 
 cvar_t *cl_le_debug;
 cvar_t *cl_trace_debug;
@@ -1753,4 +1755,65 @@ trace_t CL_Trace (const vec3_t start, const vec3_t end, const vec3_t mins, const
 	CL_ClipMoveToLEs(&clip);
 
 	return clip.trace;
+}
+
+
+/*************************
+  * save and load functions
+  ************************/
+
+/**
+ * @brief Save a single local entity to the XML DOM
+ * @param[out] p Parent XMl node
+ * @param[in] le Reference to the entity to save
+ * @return success flag
+ */
+bool LE_SaveEntityXML(xmlNode_t *p, const le_t* const le)
+{
+	xmlNode_t *node;
+	
+	node = XML_AddNode(p, "localentity");
+	// The entnum can also serve as a unique identifier
+	XML_AddInt(node, "entnum", le->entnum);
+	
+	XML_AddBool(node, "inuse", le->inuse);
+	XML_AddBool(node, "removeNextFrame", le->removeNextFrame);
+	XML_AddBool(node, "selected", le->selected);
+	XML_AddInt(node, "type", le->type);
+	
+	XML_AddPos3(node, "origin", le->origin);
+	XML_AddPos3(node, "oldOrigin", le->oldOrigin);
+	XML_AddBytePos3(node, "pos", le->pos);
+	XML_AddBytePos3(node, "oldPos", le->oldPos);
+	XML_AddBytePos3(node, "newPos", le->newPos);
+	XML_AddInt(node, "angle", le->angle);
+	XML_AddInt(node, "dir", le->dir);
+	
+	
+	
+	
+	
+	return true;
+}
+
+bool LE_SaveXML(xmlNode_t *parent)
+{
+	
+	int i;
+	xmlNode_t * node;
+	le_t *le = NULL;
+	
+	node = XML_AddNode(parent, SAVE_LOCALENTITIES);
+
+	while ((le = LE_GetNext(le))) {
+		LE_SaveEntityXML(node, le);
+	}
+	
+
+	return true;
+}
+
+bool LE_LoadXML(xmlNode_t *parent)
+{
+	return false;
 }

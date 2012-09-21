@@ -258,6 +258,22 @@ void XML_AddPos2 (xmlNode_t *parent, const char *name, const vec2_t pos)
 }
 
 /**
+ * @brief add a Pos3 (with byte values) data to the XML Tree
+ * @param[out] parent XML Node structure to add to
+ * @param[in] name Name of the node to add
+ * @param[in] pos Pos3 structure with position data
+ * @note it creates a new node and adds coordinate(s) to the node as attributes
+ */
+void XML_AddBytePos3(xmlNode_t *parent, const char *name, const pos3_t pos)
+{
+	xmlNode_t *t;
+	t = mxmlNewElement(parent, name);
+	XML_AddByte(t, "x", pos[0]);
+	XML_AddByte(t, "y", pos[1]);
+	XML_AddByte(t, "z", pos[2]);
+}
+
+/**
  * @brief add a date data to the XML Tree
  * @param[out] parent XML Node structure to add to
  * @param[in] name Name of the node to add

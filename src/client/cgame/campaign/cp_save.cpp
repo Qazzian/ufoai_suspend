@@ -45,8 +45,12 @@ typedef struct saveFileHeader_s {
 	uint32_t xmlSize;
 } saveFileHeader_t;
 
+static bool SAV_BattleSave (const char *filename, const char *comment, char **error);
+
 static saveSubsystems_t saveSubsystems[MAX_SAVESUBSYSTEMS];
+static saveSubsystems_t saveBattlescapeSubsystems[MAX_SAVESUBSYSTEMS];
 static int saveSubsystemsAmount;
+static int saveBattlescapeSubsystemsAmount;
 static cvar_t* save_compressed;
 static cvar_t *cl_lastsave;
 
@@ -316,7 +320,7 @@ static bool SAV_GameSave (const char *filename, const char *comment, char **erro
 	}
 	res = mxmlSaveString(topNode, (char*)buf, requiredBufferLength + 1, MXML_NO_CALLBACK);
 	mxmlDelete(topNode);
-	Com_Printf("XML Written to buffer (%d Bytes)\n", res);
+	Com_Printf("XML Written to buffer %s (%d Bytes)\n", filename, res);
 
 	if (header.compressed)
 		bufLen = compressBound(requiredBufferLength);
@@ -626,6 +630,185 @@ static void SAV_GameQuickLoad_f (void)
 	}
 }
 
+
+
+
+/*********************
+ *** Suspend Save ****
+ *********************/
+
+/**
+ * @brief save the current campaign and battlescape ready for suspension
+ * @sa CP_StartMissionMap
+ */
+bool SAV_SuspendSave (void)
+{
+	char *error = NULL;
+	bool result;
+
+	if (!cgi->CL_OnBattlescape())
+		return false;
+
+	result = SAV_BattleSave("slotsuspend", _("suspendSave"), &error);
+	if (!result)
+		Com_Printf("Error saving the xml game: %s\n", error ? error : "");
+	
+	return true;
+}
+
+
+/**
+ * @brief Adds a subsystem to the saveBattlescapeSubsystems array
+ * @note The order is _not_ important
+ * @sa SAV_Init
+ */
+bool SAV_AddBattlescapeSubsystem(saveSubsystems_t *subsystem)
+{
+	if (saveBattlescapeSubsystemsAmount >= MAX_SAVESUBSYSTEMS)
+		return false;
+
+	saveBattlescapeSubsystems[saveBattlescapeSubsystemsAmount].name = subsystem->name;
+	saveBattlescapeSubsystems[saveBattlescapeSubsystemsAmount].load = subsystem->load;
+	saveBattlescapeSubsystems[saveBattlescapeSubsystemsAmount].save = subsystem->save;
+	saveBattlescapeSubsystemsAmount++;
+
+	Com_Printf("added %s subsystem to saveBattlescapeSubsystems\n", subsystem->name);
+	return true;
+}
+
+/**
+ * @brief This is a savegame function which stores the game in xml-Format.
+ * @param[in] filename The Filename to save to (without extension)
+ * @param[in] comment Description of the savegame
+ * @param[out] error On failure an errormessage may be set.
+ * @note The battlescape is a completely different system to the globe view. Looks like the campaign is saved in the quicksave slot 
+ * before the battle is loaded so all this need to concern itself with is the data to recreate the battlescape view. 
+ */
+static bool SAV_BattleSave (const char *filename, const char *comment, char **error)
+{
+	xmlNode_t *topNode, *node;
+	char savegame[MAX_OSPATH];
+	int res;
+	int requiredBufferLength;
+	uLongf bufLen;
+	saveFileHeader_t header;
+	char dummy[2];
+	int i;
+	dateLong_t date;
+	char message[30];
+	char timeStampBuffer[32];
+
+	if (!CP_IsRunning()) {
+		*error = _("No campaign active.");
+		Com_Printf("Error: No campaign active.\n");
+		return false;
+	}
+
+	if (!B_AtLeastOneExists()) {
+		*error = _("Nothing to save yet.");
+		Com_Printf("Error: Nothing to save yet.\n");
+		return false;
+	}
+
+	Com_MakeTimestamp(timeStampBuffer, sizeof(timeStampBuffer));
+	Com_sprintf(savegame, sizeof(savegame), "save/%s.%s", filename, SAVEGAME_EXTENSION);
+	topNode = mxmlNewXML("1.0");
+	node = XML_AddNode(topNode, SAVE_ROOTNODE);
+	/* writing  Header */
+	XML_AddInt(node, SAVE_SAVEVERSION, SAVE_FILE_VERSION);
+	XML_AddString(node, SAVE_COMMENT, comment);
+	XML_AddString(node, SAVE_UFOVERSION, UFO_VERSION);
+	XML_AddString(node, SAVE_REALDATE, timeStampBuffer);
+	CP_DateConvertLong(&ccs.date, &date);
+	Com_sprintf(message, sizeof(message), _("%i %s %02i"),
+		date.year, Date_GetMonthName(date.month - 1), date.day);
+	XML_AddString(node, SAVE_GAMEDATE, message);
+	/* working through all subsystems. perhaps we should redesign it, order is not important anymore */
+	Com_Printf("Calling subsystems\n");
+	for (i = 0; i < saveBattlescapeSubsystemsAmount; i++) {
+		if (!saveBattlescapeSubsystems[i].save(node))
+			Com_Printf("...subsystem '%s' failed to save the data\n", saveSubsystems[i].name);
+		else
+			Com_Printf("...subsystem '%s' - saved\n", saveSubsystems[i].name);
+	}
+
+	/* calculate the needed buffer size */
+	OBJZERO(header);
+	header.compressed = LittleLong(save_compressed->integer);
+	header.version = LittleLong(SAVE_FILE_VERSION);
+	header.subsystems = LittleLong(saveSubsystemsAmount);
+	Q_strncpyz(header.name, comment, sizeof(header.name));
+	Q_strncpyz(header.gameVersion, UFO_VERSION, sizeof(header.gameVersion));
+	CP_DateConvertLong(&ccs.date, &date);
+	Com_sprintf(header.gameDate, sizeof(header.gameDate), _("%i %s %02i"),
+		date.year, Date_GetMonthName(date.month - 1), date.day);
+	Q_strncpyz(header.realDate, timeStampBuffer, sizeof(header.realDate));
+
+	requiredBufferLength = mxmlSaveString(topNode, dummy, 2, MXML_NO_CALLBACK);
+
+	header.xmlSize = LittleLong(requiredBufferLength);
+	byte* const buf = Mem_PoolAllocTypeN(byte, requiredBufferLength + 1, cp_campaignPool);
+	if (!buf) {
+		mxmlDelete(topNode);
+		*error = _("Could not allocate enough memory to save this game");
+		Com_Printf("Error: Could not allocate enough memory to save this game\n");
+		return false;
+	}
+	res = mxmlSaveString(topNode, (char*)buf, requiredBufferLength + 1, MXML_NO_CALLBACK);
+	mxmlDelete(topNode);
+	Com_Printf("XML Written to buffer %s (%d Bytes)\n", filename, res);
+
+	if (header.compressed)
+		bufLen = compressBound(requiredBufferLength);
+	else
+		bufLen = requiredBufferLength;
+
+	byte* const fbuf = Mem_PoolAllocTypeN(byte, bufLen + sizeof(header), cp_campaignPool);
+	memcpy(fbuf, &header, sizeof(header));
+
+	if (header.compressed) {
+		res = compress(fbuf + sizeof(header), &bufLen, buf, requiredBufferLength);
+		Mem_Free(buf);
+
+		if (res != Z_OK) {
+			Mem_Free(fbuf);
+			*error = _("Memory error compressing save-game data - set save_compressed cvar to 0");
+			Com_Printf("Memory error compressing save-game data (%s) (Error: %i)!\n", comment, res);
+			return false;
+		}
+	} else {
+		memcpy(fbuf + sizeof(header), buf, requiredBufferLength);
+		Mem_Free(buf);
+	}
+
+	/* last step - write data */
+	res = FS_WriteFile(fbuf, bufLen + sizeof(header), savegame);
+	Mem_Free(fbuf);
+
+	return true;
+}
+
+/**
+ * @brief Saves to the suspend save slot
+ * @sa SAV_GameQuickLoad_f
+ */
+static void SAV_SuspendSave_f (void)
+{
+	if (!CP_IsRunning())
+		return;
+
+	if (!SAV_SuspendSave()) {
+		Com_Printf("Could not save the campaign\n");
+	}
+	else {
+		MS_AddNewMessage(_("Suspendsave"), _("Game Saved successful. Now Exiting."), MSG_INFO);
+		Cmd_ExecuteString("game_exit");
+	}
+		
+}
+
+
+
 /**
  * @brief Register all save-subsystems and init some cvars and commands
  * @sa SAV_GameSave
@@ -682,6 +865,9 @@ void SAV_Init (void)
 	SAV_AddSubsystem(&xvi_subsystemXML);
 	SAV_AddSubsystem(&mso_subsystemXML);
 	SAV_AddSubsystem(&event_subsystemXML);
+	
+	/* Set up the subsytems required for saving the battle scape */
+	SAV_BattlescapeInit();
 
 	/* Check whether there is a quicksave at all */
 	Cmd_AddCommand("game_quickloadinit", SAV_GameQuickLoadInit_f, "Load the game from the quick save slot.");
@@ -692,6 +878,27 @@ void SAV_Init (void)
 	Cmd_AddCommand("game_comments", SAV_GameReadGameComments_f, "Loads the savegame names");
 	Cmd_AddCommand("game_continue", SAV_GameContinue_f, "Continue with the last saved game");
 	Cmd_AddCommand("game_savenamecleanup", SAV_GameSaveNameCleanup_f, "Remove the date string from mn_slotX cvars");
-	save_compressed = Cvar_Get("save_compressed", "1", CVAR_ARCHIVE, "Save the savefiles compressed if set to 1");
+	// DEBUG default of save_compressed should be "1"
+	save_compressed = Cvar_Get("save_compressed", "0", CVAR_ARCHIVE, "Save the savefiles compressed if set to 1");
 	cl_lastsave = Cvar_Get("cl_lastsave", "", CVAR_ARCHIVE, "Last saved slot - use for the continue-campaign function");
 }
+
+/**
+ * @brief Register all save-subsystems and init some cvars and commands that are specific to saving and loading battlescape missions
+ * @sa SAV_GameSave
+ * @sa SAV_GameLoad
+ */
+void SAV_BattlescapeInit()
+{
+	saveBattlescapeSubsystemsAmount = 0;
+
+	static saveSubsystems_t le_subsystemXML = {"localentity", LE_SaveXML, LE_LoadXML};
+	SAV_AddBattlescapeSubsystem(&le_subsystemXML);
+	
+	//SAV_AddBattlescapeSubsystem(&cp_subsystemXML);
+	
+	
+	Cmd_AddCommand("game_suspendsave", SAV_SuspendSave_f, "Save the battlescape and then close the programme.");
+	
+}
+

@@ -36,6 +36,7 @@ void XML_AddInt(xmlNode_t *parent, const char *name, int value);
 void XML_AddLong(xmlNode_t *parent, const char *name, long value);
 void XML_AddPos3(xmlNode_t *parent, const char *name, const vec3_t pos);
 void XML_AddPos2(xmlNode_t *parent, const char *name, const vec2_t pos);
+void XML_AddBytePos3(xmlNode_t *parent, const char *name, const pos3_t pos);
 void XML_AddDate(xmlNode_t *parent, const char *name, const int day, const int sec);
 
 void XML_AddStringValue(xmlNode_t *parent, const char *name, const char *value);

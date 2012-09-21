@@ -43,6 +43,8 @@ bool SAV_QuickSave(void);
 void SAV_Init(void);
 bool SAV_AddSubsystem(saveSubsystems_t *subsystem);
 
+bool SAV_SuspendSave(void);
+
 /* and now the save and load prototypes for every subsystem */
 bool B_SaveXML(xmlNode_t *parent);
 bool B_LoadXML(xmlNode_t *parent);
@@ -85,10 +87,20 @@ bool MIS_SaveXML(xmlNode_t *parent);
 bool INT_SaveXML(xmlNode_t *parent);
 bool INT_LoadXML(xmlNode_t *parent);
 
+bool LE_SaveXML(xmlNode_t *parent);
+bool LE_LoadXML(xmlNode_t *parent);
+
 bool B_PostLoadInit(void);
 bool AIR_PostLoadInit(void);
 bool PR_PostLoadInit(void);
 
 bool SAV_GameLoad(const char *file, const char **error);
+
+void SAV_BattlescapeInit();
+bool SAV_AddBattlescapeSubsystem(saveSubsystems_t *subsystem);
+bool SAV_SuspendSave (void);
+
+
+
 
 #endif
