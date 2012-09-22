@@ -1761,6 +1761,8 @@ trace_t CL_Trace (const vec3_t start, const vec3_t end, const vec3_t mins, const
 /*************************
   * save and load functions
   ************************/
+bool LE_SaveEntityXML(xmlNode_t *p, const le_t* const le);
+bool LE_SaveWoundXML(xmlNode_t *parent, const woundInfo_t* const w);
 
 /**
  * @brief Save a single local entity to the XML DOM
@@ -1773,13 +1775,12 @@ bool LE_SaveEntityXML(xmlNode_t *p, const le_t* const le)
 	xmlNode_t *node;
 	
 	node = XML_AddNode(p, "localentity");
-	// The entnum can also serve as a unique identifier
-	XML_AddInt(node, "entnum", le->entnum);
 	
 	XML_AddBool(node, "inuse", le->inuse);
 	XML_AddBool(node, "removeNextFrame", le->removeNextFrame);
 	XML_AddBool(node, "selected", le->selected);
 	XML_AddInt(node, "type", le->type);
+	XML_AddInt(node, "entnum", le->entnum);
 	
 	XML_AddPos3(node, "origin", le->origin);
 	XML_AddPos3(node, "oldOrigin", le->oldOrigin);
@@ -1789,11 +1790,34 @@ bool LE_SaveEntityXML(xmlNode_t *p, const le_t* const le)
 	XML_AddInt(node, "angle", le->angle);
 	XML_AddInt(node, "dir", le->dir);
 	
+	XML_AddInt(node, "TU", le->TU);
+	XML_AddInt(node, "maxTU", le->maxTU);
+	XML_AddInt(node, "morale", le->morale);
+	XML_AddInt(node, "maxMorale", le->maxMorale);
+	XML_AddInt(node, "HP", le->HP);
+	XML_AddInt(node, "maxHP", le->maxHP);
+	XML_AddInt(node, "STUN", le->STUN);
+	XML_AddInt(node, "state", le->state);
+	LE_SaveWoundXML(node, &le->wounds);
 	
 	
 	
 	
 	return true;
+}
+
+bool LE_SaveWoundXML(xmlNode_t *parent, const woundInfo_t* const w)
+{
+	int i;
+	xmlNode_t * wounds, *treatments, *snode;
+	
+	wounds = XML_AddNode(parent, "wounds");
+	
+	for (i = 0; i < BODYPART_MAXTYPE; i++) {
+		snode = XML_AddNode(wounds, "woundInfo");
+		XML_AddInt(snode, "woundLevel", w->woundLevel[i]);
+		XML_AddInt(snode, "treatmentLevel", w->treatmentLevel[i]);
+	}
 }
 
 bool LE_SaveXML(xmlNode_t *parent)
