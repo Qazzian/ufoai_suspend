@@ -1762,7 +1762,7 @@ trace_t CL_Trace (const vec3_t start, const vec3_t end, const vec3_t mins, const
   * save and load functions
   ************************/
 bool LE_SaveEntityXML(xmlNode_t *p, const le_t* const le);
-bool LE_SaveWoundXML(xmlNode_t *parent, const woundInfo_t* const w);
+void LE_SaveWoundXML(xmlNode_t *parent, const woundInfo_t* const w);
 
 /**
  * @brief Save a single local entity to the XML DOM
@@ -1772,7 +1772,7 @@ bool LE_SaveWoundXML(xmlNode_t *parent, const woundInfo_t* const w);
  */
 bool LE_SaveEntityXML(xmlNode_t *p, const le_t* const le)
 {
-	xmlNode_t *node;
+	xmlNode_t *node, *snode;
 	
 	node = XML_AddNode(p, "localentity");
 	
@@ -1800,16 +1800,32 @@ bool LE_SaveEntityXML(xmlNode_t *p, const le_t* const le)
 	XML_AddInt(node, "state", le->state);
 	LE_SaveWoundXML(node, &le->wounds);
 	
+	{
+		snode = XML_AddNode(node, "angles");
+		// From mathlib.h, angles are in order (pitch, yaw, roll)
+		XML_AddFloat(snode, "pitch", le->angles[PITCH]);
+		XML_AddFloat(snode, "yaw", le->angles[YAW]);
+		XML_AddFloat(snode, "roll", le->angles[ROLL]);
+	}
+	
+	XML_AddFloat(node, "alpha", le->alpha);
+	XML_AddInt(node, "team", le->team);
+	XML_AddInt(node, "pnum", le->pnum);
+	// The ucn is a good contender for a unique ID between game saves
+	XML_AddInt(node, "ucn", le->ucn);
+	
+	XML_AddInt(node, "currentSelectedFiremode", le->currentSelectedFiremode);
+	XML_AddInt(node, "actorMode", le->actorMode);
 	
 	
 	
 	return true;
 }
 
-bool LE_SaveWoundXML(xmlNode_t *parent, const woundInfo_t* const w)
+void LE_SaveWoundXML(xmlNode_t *parent, const woundInfo_t* const w)
 {
 	int i;
-	xmlNode_t * wounds, *treatments, *snode;
+	xmlNode_t * wounds, *snode;
 	
 	wounds = XML_AddNode(parent, "wounds");
 	
@@ -1818,12 +1834,11 @@ bool LE_SaveWoundXML(xmlNode_t *parent, const woundInfo_t* const w)
 		XML_AddInt(snode, "woundLevel", w->woundLevel[i]);
 		XML_AddInt(snode, "treatmentLevel", w->treatmentLevel[i]);
 	}
+	
 }
 
 bool LE_SaveXML(xmlNode_t *parent)
 {
-	
-	int i;
 	xmlNode_t * node;
 	le_t *le = NULL;
 	
