@@ -30,6 +30,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "cl_hud.h"
 #include "../input/cl_input.h"
 #include "events/e_parse.h"
+#include "../../common/xml.h"
+#include "../cgame/campaign/save/save_bs_localentitiy.h"
+
 
 static bool cameraRoute = false;
 static vec3_t routeFrom, routeDelta;
@@ -372,4 +375,23 @@ void CL_CameraInit (void)
 	Cmd_AddCommand("camsetangles", CL_CamSetAngles_f, "Set camera angles to the given values.");
 	Cmd_AddCommand("camsetzoom", CL_CamSetZoom_f, "Set camera zoom level.");
 	Cmd_AddCommand("centercamera", CL_CenterCameraIntoMap_f, "Center camera on the map.");
+}
+
+bool CAM_SaveXML(xmlNode_t *parent)
+{
+	xmlNode_t *node;
+	camera_t c = cl->cam;
+	
+	node = XML_AddNode(parent, "camera");
+	XML_AddPos3(node, "origin", c->origin);
+	XML_AddPos3(node, "camorg", c->camorg);
+	XML_AddPos3(node, "speed", c->speed);
+	XML_AddPos3(node, "angles", c->angles);
+	XML_AddPos3(node, "omega", c->omega);
+	
+	return true;
+}
+bool CAM_LoadXML(xmlNode_t *parent)
+{
+	return true;
 }

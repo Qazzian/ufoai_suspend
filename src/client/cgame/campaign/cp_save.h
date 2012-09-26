@@ -87,6 +87,9 @@ bool MIS_SaveXML(xmlNode_t *parent);
 bool INT_SaveXML(xmlNode_t *parent);
 bool INT_LoadXML(xmlNode_t *parent);
 
+
+bool CAM_SaveXML(xmlNode_t *parent);
+bool CAM_LoadXML(xmlNode_t *parent);
 bool LE_SaveXML(xmlNode_t *parent);
 bool LE_LoadXML(xmlNode_t *parent);
 

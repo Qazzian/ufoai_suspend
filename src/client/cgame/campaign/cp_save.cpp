@@ -892,13 +892,16 @@ void SAV_BattlescapeInit()
 {
 	saveBattlescapeSubsystemsAmount = 0;
 
+	//SAV_AddBattlescapeSubsystem(&cp_subsystemXML);
+	
+	static saveSubsystems_t cam_subsystemXML = {"camera", CAM_SaveXML, CAM_LoadXML};
 	static saveSubsystems_t le_subsystemXML = {"localentity", LE_SaveXML, LE_LoadXML};
 	SAV_AddBattlescapeSubsystem(&le_subsystemXML);
 	
-	//SAV_AddBattlescapeSubsystem(&cp_subsystemXML);
+	
 	
 	
 	Cmd_AddCommand("game_suspendsave", SAV_SuspendSave_f, "Save the battlescape and then close the programme.");
-	
+	// TODO start looking at clientBattleScape_t cl in cl_battlescape.h
 }
 
