@@ -1817,7 +1817,33 @@ bool LE_SaveEntityXML(xmlNode_t *p, const le_t* const le)
 	XML_AddInt(node, "currentSelectedFiremode", le->currentSelectedFiremode);
 	XML_AddInt(node, "actorMode", le->actorMode);
 	
+	// Doesn't seem much point saving these.
+	// mousePendPos, actorMoveLength; 
 	
+	
+	if (le->clientAction != NULL) {
+		XML_AddInt(node, "clientAction_ucn", le->clientAction->ucn);
+	}
+	
+	XML_AddInt(node, "contents", le->contents);
+	XML_AddPos3(node, "mins", le->mins);
+	XML_AddPos3(node, "maxs", le->maxs);
+	XML_AddPos3(node, "size", le->size);
+	
+	XML_AddString(node, "inlineModelName", le->inlineModelName);
+	XML_AddInt(node, "modelnum1", le->modelnum1);
+	XML_AddInt(node, "modelnum2", le->modelnum2);
+	XML_AddInt(node, "bodySkin", le->bodySkin);
+	XML_AddInt(node, "headSkin", le->headSkin);
+	
+	// TODO add model_t obj's for model1 & model2
+	// TODO how do I know which think function to use?
+	// Also lots of the next set of variables must be set by the model type etc
+	
+	if (le->teamDef != NULL) {
+		XML_AddString(node, "teamDefid", le->teamDef->id);
+	}
+	XML_AddInt(node, "gender", le->gender);
 	
 	return true;
 }
@@ -1831,6 +1857,7 @@ void LE_SaveWoundXML(xmlNode_t *parent, const woundInfo_t* const w)
 	
 	for (i = 0; i < BODYPART_MAXTYPE; i++) {
 		snode = XML_AddNode(wounds, "woundInfo");
+		XML_AddInt(snode, "index", i);
 		XML_AddInt(snode, "woundLevel", w->woundLevel[i]);
 		XML_AddInt(snode, "treatmentLevel", w->treatmentLevel[i]);
 	}
@@ -1841,12 +1868,15 @@ bool LE_SaveXML(xmlNode_t *parent)
 {
 	xmlNode_t * node;
 	le_t *le = NULL;
+	int count = 0;
 	
 	node = XML_AddNode(parent, SAVE_LOCALENTITIES);
 
 	while ((le = LE_GetNext(le))) {
+		count++;
 		LE_SaveEntityXML(node, le);
 	}
+	XML_AddInt(node, "count", cl.numLEs);
 	
 
 	return true;
