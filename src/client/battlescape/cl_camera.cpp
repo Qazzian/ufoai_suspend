@@ -379,8 +379,8 @@ void CL_CameraInit (void)
 
 bool CAM_SaveXML(xmlNode_t *parent)
 {
-	xmlNode_t *node;
-	camera_t c = cl->cam;
+	xmlNode_t *node, *snode;
+	camera_t *c = &cl.cam;
 	
 	node = XML_AddNode(parent, "camera");
 	XML_AddPos3(node, "origin", c->origin);
@@ -388,6 +388,11 @@ bool CAM_SaveXML(xmlNode_t *parent)
 	XML_AddPos3(node, "speed", c->speed);
 	XML_AddPos3(node, "angles", c->angles);
 	XML_AddPos3(node, "omega", c->omega);
+	
+	snode = XML_AddNode(node, "axis");
+	XML_AddPos3(snode, "x", c->axis[0]);
+	XML_AddPos3(snode, "y", c->axis[1]);
+	XML_AddPos3(snode, "z", c->axis[2]);
 	
 	return true;
 }
